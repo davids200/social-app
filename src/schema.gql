@@ -1,0 +1,51 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type User {
+  id: Int!
+  username: String!
+  email: String!
+}
+
+type AuthResponse {
+  accessToken: String!
+  refreshToken: String!
+}
+
+type UserResponse {
+  id: Int!
+  username: String!
+  email: String!
+}
+
+type Post {
+  id: Int!
+  content: String!
+  userId: Int!
+  createdAt: DateTime!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Query {
+  users: [User!]!
+  getPosts: [Post!]!
+  getLikes(postId: Float!): Float!
+  getFollowers(userId: Float!): [Float!]!
+  getFollowing(userId: Float!): [Float!]!
+}
+
+type Mutation {
+  createUser(username: String!, email: String!): User!
+  register(username: String!, email: String!, password: String!): UserResponse!
+  login(email: String!, password: String!): AuthResponse!
+  createPost(content: String!): Post!
+  likePost(postId: Float!): Boolean!
+  unlikePost(postId: Float!): Boolean!
+  followUser(userId: Float!): Boolean!
+  unfollowUser(userId: Float!): Boolean!
+}
