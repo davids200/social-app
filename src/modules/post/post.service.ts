@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './post.entity';
-
-// ✅ BullMQ queue injection (you MUST have this service)
 import { PostQueueService } from '../../infrastructure/queue/queue.service';
 
 @Injectable()
@@ -12,29 +10,36 @@ export class PostService {
     @InjectRepository(Post)
     private postRepo: Repository<Post>,
 
-    private postQueue: PostQueueService, // 🔥 ADD THIS
+    private postQueue: PostQueueService,
   ) {}
 
-  async create(content: string, userId: number) {
-    // 1. Save in PostgreSQL (source of truth)
+  // 📝 CREATE POST
+  async create(userId: number,content: string) {
+    // 1. Save to PostgreSQL (SOURCE OF TRUTH)
     const post = await this.postRepo.save(
-      this.postRepo.create({ content, userId }),
+      this.postRepo.create({
+        content,
+        userId,
+      }),
     );
 
-    console.log('🟢 Post saved in PostgreSQL:', post.id);
-
-    // 2. Push to queue (for Neo4j worker)
-    await this.postQueue.addPostJob({
-      postId: post.id,
-      userId,
-      content,
-    });
-
-    console.log('📨 Job sent to queue');
+    // 2. Dispatch async jobs (Redis queue)
+    await this.dispatchPostEvents(post);
 
     return post;
   }
 
+  // 📦 QUEUE HANDLING SEPARATED (CLEAN DESIGN)
+  private async dispatchPostEvents(post: Post) {
+    await this.postQueue.addPostCreatedJob({
+      postId: post.id,
+      userId: post.userId,
+      content: post.content,
+      createdAt: post.createdAt,
+    });
+  }
+
+  // 📥 FETCH POSTS
   findAll() {
     return this.postRepo.find({
       order: { id: 'DESC' },

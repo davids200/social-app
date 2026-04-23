@@ -25,11 +25,14 @@
     "@nestjs/apollo": "^13.2.5",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/graphql": "^13.2.5",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.19",
     "@nestjs/typeorm": "^11.0.1",
+    "@nestjs/websockets": "^11.1.19",
     "apollo-server-express": "^3.13.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.75.2",
@@ -41,6 +44,7 @@
     "pg": "^8.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "typeorm": "^0.3.28"
   },
   "devDependencies": {

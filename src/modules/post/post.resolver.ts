@@ -1,4 +1,4 @@
-import { Resolver, Mutation, Query, Args, Context } from '@nestjs/graphql';
+import { Resolver, Mutation, Query, Args, Context, Int } from '@nestjs/graphql';
 import { PostService } from './post.service';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -9,14 +9,13 @@ export class PostResolver {
   constructor(private postService: PostService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Mutation(() => Post) // ✅ return Post, not String
-  createPost(
-    @Args('content') content: string,
-    @Context() context: any, // you can type this later
-  ) {
-    const userId = context.req.user.userId;
-    return this.postService.create(content, userId);
-  }
+ @Mutation(() => Post)
+createPost(
+  @Args('userId', { type: () => Int }) userId: number,
+  @Args('content') content: string,
+) {
+  return this.postService.create(userId, content);
+}
 
   @Query(() => [Post]) // ✅ correct, no extra symbols
   getPosts() {

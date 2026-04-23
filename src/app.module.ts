@@ -10,9 +10,11 @@ import { PostModule } from './modules/post/post.module';
 import { LikeModule } from './modules/like/like.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { Neo4jModule } from './infrastructure/database/neo4j/neo4j.module';
+import { NotificationModule } from './modules/notification/notification.module';
 
 // ✅ Infrastructure worker (IMPORTANT: must be in providers, NOT imports)
 import { PostWorker } from './workers/post.worker';
+import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module';
 
 @Module({
   imports: [
@@ -41,11 +43,14 @@ import { PostWorker } from './workers/post.worker';
     LikeModule,
     FollowModule,
     Neo4jModule,
+    NotificationModule,
+     EventEmitterModule.forRoot(),
   ],
 
   // ✅ THIS IS THE CRITICAL FIX
   providers: [
     PostWorker,
   ],
+  
 })
 export class AppModule {}

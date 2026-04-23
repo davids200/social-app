@@ -31,21 +31,34 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type Like {
+  id: Int!
+  userId: Int!
+  postId: Int
+  commentId: Int
+}
+
+type LikeResponse {
+  postId: Int
+  commentId: Int
+  likeCount: Int!
+  likedByMe: Boolean!
+}
+
 type Query {
   users: [User!]!
   getPosts: [Post!]!
-  getLikes(postId: Float!): Float!
-  getFollowers(userId: Float!): [Float!]!
-  getFollowing(userId: Float!): [Float!]!
+  postLikeCount(postId: Int!): Int!
+  commentLikeCount(commentId: Int!): Int!
 }
 
 type Mutation {
   createUser(username: String!, email: String!): User!
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
-  createPost(content: String!): Post!
-  likePost(postId: Float!): Boolean!
-  unlikePost(postId: Float!): Boolean!
-  followUser(userId: Float!): Boolean!
-  unfollowUser(userId: Float!): Boolean!
+  createPost(userId: Int!, content: String!): Post!
+  likePost(userId: Int!, postId: Int!): LikeResponse!
+  likeComment(userId: Int!, commentId: Int!): Like!
+  unlikePost(userId: Int!, postId: Int!): LikeResponse!
+  unlikeComment(userId: Int!, commentId: Int!): LikeResponse!
 }

@@ -1,36 +1,56 @@
-import { Resolver, Mutation, Args, Query, Context } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Int, Query } from '@nestjs/graphql';
 import { LikeService } from './like.service';
-import { UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Like } from './like.entity';
+import { LikeResponse } from './like-response.model';
 
-@Resolver()
+@Resolver(() => Like)
 export class LikeResolver {
   constructor(private likeService: LikeService) {}
 
-  @UseGuards(JwtAuthGuard)
-  @Mutation(() => Boolean)
-  likePost(
-    @Args('postId') postId: number,
-    @Context() context,
+  @Mutation(() => LikeResponse)
+likePost(
+  @Args('userId', { type: () => Int }) userId: number,
+  @Args('postId', { type: () => Int }) postId: number,
+) {
+  return this.likeService.likePost(userId, postId);
+}
+
+  @Mutation(() => Like)
+  likeComment(
+    @Args('userId', { type: () => Int }) userId: number,
+    @Args('commentId', { type: () => Int }) commentId: number,
   ) {
-    const userId = context.req.user.userId;
-    this.likeService.likePost(userId, postId);
-    return true;
+    return this.likeService.likeComment(userId, commentId);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @Mutation(() => Boolean)
-  unlikePost(
-    @Args('postId') postId: number,
-    @Context() context,
+  @Mutation(() => LikeResponse)
+unlikePost(
+  @Args('userId', { type: () => Int }) userId: number,
+  @Args('postId', { type: () => Int }) postId: number,
+) {
+  return this.likeService.unlikePost(userId, postId);
+}
+
+
+ @Mutation(() => LikeResponse)
+unlikeComment(
+  @Args('userId', { type: () => Int }) userId: number,
+  @Args('commentId', { type: () => Int }) commentId: number,
+) {
+  return this.likeService.unlikeComment(userId, commentId);
+}
+
+  @Query(() => Int)
+  postLikeCount(
+    @Args('postId', { type: () => Int }) postId: number,
   ) {
-    const userId = context.req.user.userId;
-    this.likeService.unlikePost(userId, postId);
-    return true;
+    return this.likeService.countPostLikes(postId);
   }
 
-  @Query(() => Number)
-  getLikes(@Args('postId') postId: number) {
-    return this.likeService.countLikes(postId);
+  @Query(() => Int)
+  commentLikeCount(
+    @Args('commentId', { type: () => Int }) commentId: number,
+  ) {
+    return this.likeService.countCommentLikes(commentId);
   }
 }

@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
 import { FollowService } from './follow.service';
-import { FollowResolver } from './follow.resolver';
-import { Neo4jService } from '../../infrastructure/database/neo4j/neo4j.service';
+import { Neo4jModule } from '../../infrastructure/database/neo4j/neo4j.module'; 
 
 @Module({
-  providers: [FollowService, FollowResolver, Neo4jService],
+  imports: [
+    Neo4jModule,   // already needed 
+  ],
+  providers: [FollowService],
+  exports: [FollowService],
 })
 export class FollowModule {}

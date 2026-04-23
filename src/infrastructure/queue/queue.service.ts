@@ -8,17 +8,22 @@ export class PostQueueService {
     connection: redisOptions,
   });
 
-  async addPostJob(data: {
-    postId: number;
-    userId: number;
-    content: string;
-  }) {
-    await this.queue.add('create-post', data, {
-      attempts: 3, // retry if Neo4j fails
-      backoff: {
-        type: 'exponential',
-        delay: 2000,
-      },
-    });
-  }
+
+  async addPostCreatedJob(data: any) {
+  await this.queue.add('post.created', data);
+}
+
+//   async addPostJob(data: {
+//     postId: number;
+//     userId: number;
+//     content: string;
+//   }) {
+//     await this.queue.add('create-post', data, {
+//       attempts: 3, // retry if Neo4j fails
+//       backoff: {
+//         type: 'exponential',
+//         delay: 2000,
+//       },
+//     });
+//   }
 }
