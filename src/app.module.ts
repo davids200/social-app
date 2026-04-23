@@ -12,9 +12,11 @@ import { FollowModule } from './modules/follow/follow.module';
 import { Neo4jModule } from './infrastructure/database/neo4j/neo4j.module';
 import { NotificationModule } from './modules/notification/notification.module';
 
+
 // ✅ Infrastructure worker (IMPORTANT: must be in providers, NOT imports)
-import { PostWorker } from './workers/post.worker';
+import { PostWorker } from './infrastructure/queue/workers/post.worker';
 import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module';
+import { QueueModule } from './infrastructure/queue/queue.module';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.mod
     Neo4jModule,
     NotificationModule,
      EventEmitterModule.forRoot(),
+     QueueModule
   ],
 
   // ✅ THIS IS THE CRITICAL FIX
