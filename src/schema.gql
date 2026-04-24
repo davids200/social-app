@@ -2,7 +2,7 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type User {
+type UserModel {
   id: Int!
   username: String!
   email: String!
@@ -45,15 +45,23 @@ type LikeResponse {
   likedByMe: Boolean!
 }
 
+type FollowUserType {
+  id: Int!
+  username: String!
+  email: String!
+}
+
 type Query {
-  users: [User!]!
+  users: [UserModel!]!
   getPosts: [Post!]!
   postLikeCount(postId: Int!): Int!
   commentLikeCount(commentId: Int!): Int!
+  getFollowing(userId: Int!): [FollowUserType!]!
+  getFollowers(userId: Int!): [FollowUserType!]!
 }
 
 type Mutation {
-  createUser(username: String!, email: String!): User!
+  createUser(username: String!, email: String!, password: String!): UserModel!
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
   createPost(userId: Int!, content: String!): Post!
@@ -61,4 +69,6 @@ type Mutation {
   likeComment(userId: Int!, commentId: Int!): Like!
   unlikePost(userId: Int!, postId: Int!): LikeResponse!
   unlikeComment(userId: Int!, commentId: Int!): LikeResponse!
+  followUser(followerId: Int!, followingId: Int!): Boolean!
+  unfollowUser(followerId: Int!, followingId: Int!): Boolean!
 }

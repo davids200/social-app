@@ -9,7 +9,7 @@ export class Notification {
   userId!: number; // receiver
 
   @Column()
-  type!: 'like' | 'follow' | 'comment';
+  type!: 'like' | 'follow' | 'comment' | 'new_post';
 
   @Column({ nullable: true })
   sourceUserId!: number;

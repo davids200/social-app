@@ -4,24 +4,30 @@ import {
   SubscribeMessage,
   ConnectedSocket,
 } from '@nestjs/websockets';
+
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: '*',
+  },
 })
 export class NotificationGateway {
   @WebSocketServer()
   server!: Server;
 
-  // user joins their personal room
+  // 👤 JOIN USER ROOM
   handleConnection(client: Socket) {
     const userId = client.handshake.query.userId;
-    client.join(`user_${userId}`);
+
+    if (userId) {
+      client.join(`user_${userId}`);
+      console.log(`🟢 User connected: ${userId}`);
+    }
   }
 
-  sendToUser(userId: number, notification: any) {
-    this.server
-      .to(`user_${userId}`)
-      .emit('notification', notification);
+  // 📤 SEND NOTIFICATION TO USER
+  sendToUser(userId: number, payload: any) {
+    this.server.to(`user_${userId}`).emit('notification', payload);
   }
 }

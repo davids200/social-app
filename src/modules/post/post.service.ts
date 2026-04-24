@@ -2,14 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './post.entity';
-import { PostQueueService } from '../../infrastructure/queue/queue.service';
+import { PostQueueService } from '../../infrastructure/queue/post.queue.service';
 
 @Injectable()
 export class PostService {
   constructor(
     @InjectRepository(Post)
     private postRepo: Repository<Post>,
-
     private postQueue: PostQueueService,
   ) {}
 
@@ -31,7 +30,7 @@ export class PostService {
 
   // 📦 QUEUE HANDLING SEPARATED (CLEAN DESIGN)
   private async dispatchPostEvents(post: Post) {
-    await this.postQueue.addPostCreatedJob({
+    await this.postQueue.addPostJob({
       postId: post.id,
       userId: post.userId,
       content: post.content,

@@ -1,19 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-import { ObjectType, Field, Int } from '@nestjs/graphql';
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
-@ObjectType()
 @Entity()
+@Index(['email'], { unique: true }) // 🔥 prevent duplicate emails
 export class User {
-  @Field(() => Int)
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Field()
   @Column()
   username!: string;
 
-  @Field()
-  @Column({ unique: true }) // 🔥 FIX: prevents duplicates
+  @Column()
   email!: string;
 
   @Column()

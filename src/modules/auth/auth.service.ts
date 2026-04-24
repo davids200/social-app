@@ -11,20 +11,20 @@ export class AuthService {
   ) {}
 
  async register(username: string, email: string, password: string) {
-  const existingUser = await this.userService.findByEmail(email);
+  const existingUser = await this.userService.findUserByEmail(email);
 
   if (existingUser) {
     throw new Error('User already exists');
   }
 
   const hash = await bcrypt.hash(password, 10);
-  return this.userService.create(username, email, hash);
+  return this.userService.createUser(username, email, hash);
 }
 
 
 
  async login(email: string, password: string) {
-  const user = await this.userService.findByEmail(email);
+  const user = await this.userService.findUserByEmail(email);
 
   if (!user) {
     throw new Error('User not found');

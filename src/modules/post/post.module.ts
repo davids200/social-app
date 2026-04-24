@@ -5,14 +5,16 @@ import { Post } from './post.entity';
 import { PostService } from './post.service';
 import { PostResolver } from './post.resolver';
 
-import { QueueModule } from '../../infrastructure/queue/queue.module'; // 🔥 ADD THIS
-import { PostQueueService } from '../../infrastructure/queue/queue.service'; // 🔥 ADD THIS
+import { QueueModule } from '../../infrastructure/queue/queue.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Post]),
-    QueueModule, // 🔥 THIS FIXES YOUR ERROR
+    QueueModule, // ✅ this is enough
   ],
-  providers: [PostService,PostQueueService, PostResolver],
+  providers: [
+    PostService,
+    PostResolver,
+  ],
 })
 export class PostModule {}

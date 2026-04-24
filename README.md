@@ -1,95 +1,123 @@
+SOCIAL APP PROJECT STATUS EXPORT
+Date: 2026-04-23
 
----
+========================
+1. OVERALL ARCHITECTURE
+========================
+Backend: NestJS (GraphQL + TypeScript)
+Databases:
+- PostgreSQL (primary source of truth)
+- Neo4j (graph database for relationships, feed, recommendations)
 
-## 📦 Features
+Async / Messaging:
+- Redis (BullMQ queue system)
 
-### 🔐 Authentication
-- User registration
-- Login with JWT
-- Protected GraphQL routes
-- AuthGuard implementation
+Real-time:
+- WebSocket (Notification Gateway)
 
-### 📝 Posts
-- Create posts via GraphQL
-- Store posts in PostgreSQL
-- Async processing via queue
-- Sync to Neo4j graph
+========================
+2. CORE MODULES
+========================
 
-### 👥 Social Graph
-- Follow / Unfollow users
-- Followers & following queries
-- Neo4j relationship storage
+User Module:
+- User creation (PostgreSQL)
+- Queue-based sync to Neo4j (user.created event)
+- Prevents duplicate users via service-level control
 
-### ⚡ Queue System
-- Redis-based job queue (BullMQ)
-- Background processing
-- Reliable async execution
+Post Module:
+- Post creation stored in PostgreSQL
+- Redis queue emits post.created event
+- Worker creates Post node in Neo4j
+- Builds relationships (CREATED, SEES feed edges)
 
-### 🧑‍🏭 Worker System
-- PostWorker processes queued jobs
-- Writes posts into Neo4j
-- Ensures data consistency
+Follow System:
+- Follow/unfollow via GraphQL mutations
+- Stored in Neo4j as FOLLOWS relationships
+- Prevented duplicate relationships using MERGE (NOT CREATE)
 
----
+Notification System:
+- Triggered via queue events:
+  - post.created
+  - post.liked
+  - user.followed
+- Stored in DB + sent via WebSocket gateway
 
-## 🗄️ Databases
+========================
+3. QUEUE SYSTEM (BULLMQ)
+========================
 
-### PostgreSQL
-- Users
-- Posts
-- Primary relational storage
+Queues:
+- post-queue
+- user-queue
 
-### Neo4j
-- User nodes
-- FOLLOW relationships
-- POSTED relationships
-- Graph-based queries
+Workers:
+- PostWorker:
+  - handles post.created, post.liked
+  - syncs Neo4j
+  - triggers notifications
 
-### Redis
-- Job queue (BullMQ)
-- Async processing layer
+- UserWorker:
+  - handles user.created
+  - syncs Neo4j user nodes
 
----
+Configuration:
+- BullModule.forRoot configured with Redis connection
+- BullModule.registerQueue used for queue definitions
+- @InjectQueue used in services
 
-## 🔄 System Flow
+========================
+4. GRAPH DATABASE (NEO4J)
+========================
 
-```
-User Login → JWT Auth ✔
-Create Post → PostgreSQL ✔
-Queue Job → Redis ✔
-Worker Execution → Neo4j ✔
-Graph Updated → Relationships ✔
-```
+Nodes:
+- User
+- Post
 
----
+Relationships:
+- (User)-[:CREATED]->(Post)
+- (User)-[:FOLLOWS]->(User)
+- (User)-[:SEES]->(Post)
 
-## 📁 Project Structure
+Key Rule:
+- MERGE used instead of CREATE to prevent duplicates
 
-```
-src/
-│
-├── modules/
-│   ├── auth/
-│   ├── user/
-│   ├── post/
-│   ├── follow/
-│   └── like/
-│
-├── infrastructure/
-│   ├── database/
-│   │   └── neo4j/
-│   ├── queue/
-│   └── workers/
-│
-├── common/
-└── main.ts
-```
+========================
+5. CURRENT FIXES COMPLETED
+========================
 
----
+- Fixed BullMQ connection error (Worker requires a connection)
+- Fixed missing queue registration (registerQueue added)
+- Fixed dependency injection issues (QueueModule imports)
+- Fixed worker initialization issues
+- Fixed duplicate service injection issues
+- Fixed Neo4j sync pipeline via workers
 
-## ⚙️ Installation
+========================
+6. CURRENT STATUS (STABLE FLOW)
 
-### 1. Clone repository
-```bash
-git clone https://github.com/your-repo/social-app-backend.git
-cd social-app-backend
+✔ Postgres working
+✔ Redis queue working
+✔ Workers running
+✔ Neo4j syncing correctly
+✔ Follow relationships working
+✔ Notifications pipeline active
+
+========================
+7. ARCHITECTURE FLOW
+
+User/Post Action →
+PostgreSQL Save →
+Redis Queue Event →
+Worker Processing →
+Neo4j Sync →
+Notification + WebSocket Update
+
+========================
+8. KNOWN IMPROVEMENTS NEXT
+
+- Feed ranking algorithm (Neo4j traversal optimization)
+- Prevent duplicate follow relationships at API level
+- Batch notifications (performance improvement)
+- WebSocket room-based delivery per user
+- Comment system (nested graph structure)
+- Like system with polymorphic graph design

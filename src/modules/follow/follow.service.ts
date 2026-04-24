@@ -1,100 +1,96 @@
 import { Injectable } from '@nestjs/common';
 import { Neo4jService } from '../../infrastructure/database/neo4j/neo4j.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { UserQueueService } from 'src/infrastructure/queue/user.queue.service';
 
 @Injectable()
 export class FollowService {
+  repo: any;
   constructor(
+    private userQueue: UserQueueService,
     private neo4j: Neo4jService,
-    private eventEmitter: EventEmitter2,
   ) {}
 
-  // 👤 FOLLOW USER
+  // =========================
+  // 🚀 FOLLOW USER
+  // =========================
   async followUser(followerId: number, followingId: number) {
-    const session = this.neo4j.getSession();
+    await this.userQueue.addFollowJob({
+      followerId: String(followerId),
+      followingId: String(followingId),
+    });
 
-    try {
-      await session.run(
-        `
-        MERGE (a:User {id: $followerId})
-        MERGE (b:User {id: $followingId})
-        MERGE (a)-[:FOLLOWS]->(b)
-        `,
-        { followerId, followingId },
-      );
-
-      // 🔥 Emit event (correct place)
-      this.eventEmitter.emit('user.followed', {
-        followerId,
-        followingId,
-      });
-
-      return { success: true };
-    } finally {
-      await session.close();
-    }
+    return { success: true };
   }
 
-  // ❌ UNFOLLOW USER
+  // =========================
+  // 💔 UNFOLLOW USER
+  // =========================
   async unfollowUser(followerId: number, followingId: number) {
+    await this.userQueue.addUnfollowJob({
+      followerId: String(followerId),
+      followingId: String(followingId),
+    });
+
+    return { success: true };
+  }
+
+  // =========================
+  // 🧠 NEO4J RUNNER
+  // =========================
+  private async run(query: string, params: any) {
     const session = this.neo4j.getSession();
-
     try {
-      await session.run(
-        `
-        MATCH (a:User {id: $followerId})-[r:FOLLOWS]->(b:User {id: $followingId})
-        DELETE r
-        `,
-        { followerId, followingId },
-      );
-
-      // 🔥 Emit event (optional but useful)
-      this.eventEmitter.emit('user.unfollowed', {
-        followerId,
-        followingId,
-      });
-
-      return { success: true };
+      return await session.run(query, params);
     } finally {
       await session.close();
     }
   }
 
+  // =========================
+  // 👥 GET FOLLOWING
+  // =========================
+ async getFollowing(userId: number) {
+  const result = await this.run(
+    `
+    MATCH (u:User {id: $userId})-[:FOLLOWS]->(f:User)
+    RETURN 
+      f.id AS id,
+      f.username AS username,
+      f.email AS email
+    `,
+    { userId: String(userId) },
+  );
+
+  return result.records.map((record) => ({
+    id: record.get('id'),
+    username: record.get('username'),
+    email: record.get('email'),
+  }));
+}
+
+  // =========================
   // 👥 GET FOLLOWERS
-  async getFollowers(userId: number) {
-    const session = this.neo4j.getSession();
+  // =========================
+ async getFollowers(userId: number) {
+  const result = await this.run(
+    `
+    MATCH (f:User)-[:FOLLOWS]->(u:User {id: $userId})
+    RETURN 
+      f.id AS id,
+      f.username AS username,
+      f.email AS email
+    `,
+    { userId: String(userId) },
+  );
 
-    try {
-      const result = await session.run(
-        `
-        MATCH (u:User)-[:FOLLOWS]->(me:User {id: $userId})
-        RETURN u.id AS id
-        `,
-        { userId },
-      );
+  return result.records.map((record) => ({
+    id: record.get('id'),
+    username: record.get('username'),
+    email: record.get('email'),
+  }));
+}
 
-      return result.records.map((r) => r.get('id'));
-    } finally {
-      await session.close();
-    }
-  }
 
-  // 👤 GET FOLLOWING
-  async getFollowing(userId: number) {
-    const session = this.neo4j.getSession();
+ 
 
-    try {
-      const result = await session.run(
-        `
-        MATCH (me:User {id: $userId})-[:FOLLOWS]->(u:User)
-        RETURN u.id AS id
-        `,
-        { userId },
-      );
-
-      return result.records.map((r) => r.get('id'));
-    } finally {
-      await session.close();
-    }
-  }
 }

@@ -11,15 +11,23 @@ import { LikeModule } from './modules/like/like.module';
 import { FollowModule } from './modules/follow/follow.module';
 import { Neo4jModule } from './infrastructure/database/neo4j/neo4j.module';
 import { NotificationModule } from './modules/notification/notification.module';
+import { BullModule } from '@nestjs/bullmq';
 
 
 // ✅ Infrastructure worker (IMPORTANT: must be in providers, NOT imports)
 import { PostWorker } from './infrastructure/queue/workers/post.worker';
 import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
+import { NotificationGateway } from './modules/notification/notification.gateway';
 
 @Module({
   imports: [
+     BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
@@ -46,6 +54,7 @@ import { QueueModule } from './infrastructure/queue/queue.module';
     FollowModule,
     Neo4jModule,
     NotificationModule,
+    NotificationGateway,
      EventEmitterModule.forRoot(),
      QueueModule
   ],
