@@ -1,10 +1,21 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Index,
+  OneToMany,
+} from 'typeorm';
+
+import { Post } from '../post/post.entity';
 
 @Entity()
-@Index(['email'], { unique: true }) // 🔥 prevent duplicate emails
+@Index(['email'], { unique: true }) 
+@Index(['username'], { unique: true }) 
 export class User {
-  @PrimaryGeneratedColumn()
-  id!: number;
+
+   @Column()
+ @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column()
   username!: string;
@@ -14,4 +25,8 @@ export class User {
 
   @Column()
   password!: string;
+
+  // 🔥 RELATION: USER → POSTS
+  @OneToMany(() => Post, (post) => post.user)
+  posts!: Post[];
 }

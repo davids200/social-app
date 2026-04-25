@@ -20,6 +20,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.mod
 import { QueueModule } from './infrastructure/queue/queue.module';
 import { NotificationGateway } from './modules/notification/notification.gateway';
 
+
 @Module({
   imports: [
      BullModule.forRoot({

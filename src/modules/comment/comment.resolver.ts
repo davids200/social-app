@@ -1,41 +1,59 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import { Resolver, Mutation, Query, Args, Context } from '@nestjs/graphql';
 import { CommentService } from './comment.service';
 import { Comment } from './comment.entity';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UseGuards } from '@nestjs/common';
 
 @Resolver(() => Comment)
 export class CommentResolver {
-  constructor(private commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService) {}
 
-  // ➕ Create comment or reply
-  @Mutation(() => Comment)
-  createComment(
-    @Args('userId', { type: () => Int }) userId: number,
-    @Args('postId', { type: () => Int }) postId: number,
-    @Args('content') content: string,
-    @Args('parentCommentId', { type: () => Int, nullable: true })
-    parentCommentId?: number,
-  ) {
-    return this.commentService.createComment({
-      userId,
-      postId,
-      content,
-      parentCommentId,
-    });
+  // =========================
+  // 💬 CREATE COMMENT
+  // =========================
+
+ @UseGuards(JwtAuthGuard)
+@Mutation(() => Comment)
+createComment(
+  @Context() ctx: any,
+  @Args('postId', { type: () => String }) postId: string,
+  @Args('content') content: string,
+  @Args('parentCommentId', { type: () => String, nullable: true })
+  parentCommentId?: string,
+) {
+  const userId = ctx?.req?.user?.id;
+
+  console.log(ctx.req.user);
+
+  if (!userId) {
+    throw new Error('Unauthorized');
   }
 
-  // 📥 Get all comments for a post
+  return this.commentService.createComment(
+    userId,
+    postId,
+    content,
+    parentCommentId,
+  );
+}
+
+  // =========================
+  // 📄 GET FLAT COMMENTS
+  // =========================
   @Query(() => [Comment])
-  comments(
-    @Args('postId', { type: () => Int }) postId: number,
+  getPostComments(
+    @Args('postId', { type: () => String }) postId: string,
   ) {
     return this.commentService.getPostComments(postId);
   }
 
-  // 🔁 Get replies
+  // =========================
+  // 🌳 GET COMMENT TREE
+  // =========================
   @Query(() => [Comment])
-  replies(
-    @Args('parentCommentId', { type: () => Int }) parentCommentId: number,
+  getCommentTree(
+    @Args('postId', { type: () => String }) postId: string,
   ) {
-    return this.commentService.getReplies(parentCommentId);
+    return this.commentService.getCommentTree(postId);
   }
 }

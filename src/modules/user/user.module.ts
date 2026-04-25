@@ -6,11 +6,15 @@ import { UserService } from './user.service';
 import { UserResolver } from './user.resolver';
 
 import { QueueModule } from '../../infrastructure/queue/queue.module';
+import { CommentModule } from '../comment/comment.module';
+import { PostModule } from '../post/post.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
-    QueueModule, // ✅ provides UserQueueService
+    QueueModule,
+    PostModule,
+    CommentModule,
   ],
   providers: [
     UserService,

@@ -13,20 +13,29 @@ export class PostWorker extends WorkerHost {
     console.log('🚀 PostWorker initialized');
   }
 
+
+
   async process(job: Job): Promise<any> {
-    console.log('🔥 JOB RECEIVED:', job.name);
+    console.log('🔥 JOB RECEIVED 1:', job.data);
 
-    if (job.name === 'post.created') {
-      const { postId, userId } = job.data;
+if (job.name === 'post.created') {
 
-      await this.neo4j.getSession().run(
-        `
-        MERGE (p:Post {id: $postId})
-        MERGE (u:User {id: $userId})
-        MERGE (u)-[:CREATED]->(p)
-        `,
-        { postId, userId },
-      );
+const { postId, userId, content, createdAt } = job.data;
+
+await this.neo4j.getSession().run(
+`
+MERGE (u:User {id: $userId})
+MERGE (p:Post {id: $postId})
+
+SET p.content = $content,
+p.createdAt = datetime($createdAt)
+
+MERGE (u)-[:POSTED]->(p)
+`,
+{ postId, userId, content, createdAt },
+);
+
+
     }
 
     if (job.name === 'post.liked') {

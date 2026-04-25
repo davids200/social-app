@@ -25,8 +25,8 @@ export class FollowResolver {
  @UseGuards(JwtAuthGuard)
 @Mutation(() => Boolean)
 async followUser(
-  @Args('followerId', { type: () => Int }) followerId: number,
-  @Args('followingId', { type: () => Int }) followingId: number,
+  @Args('followerId', { type: () => String }) followerId: string,
+  @Args('followingId', { type: () => String }) followingId: string,
 ): Promise<boolean> {
 
   const follower = await this.userService.findUserById(followerId);
@@ -59,8 +59,8 @@ async followUser(
   @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
   async unfollowUser(
-    @Args('followerId', { type: () => Int }) followerId: number,
-    @Args('followingId', { type: () => Int }) followingId: number,
+    @Args('followerId', { type: () => String }) followerId: string,
+  @Args('followingId', { type: () => String }) followingId: string,
   ): Promise<boolean> {
     const result = await this.followService.unfollowUser(
       followerId,
@@ -75,7 +75,7 @@ async followUser(
   // =========================
   @Query(() => [FollowUserType])
   getFollowing(
-    @Args('userId', { type: () => Int }) userId: number,
+    @Args('userId', { type: () => Int }) userId: string,
   ) {
     return this.followService.getFollowing(userId);
   }
@@ -85,7 +85,7 @@ async followUser(
   // =========================
   @Query(() => [FollowUserType])
   getFollowers(
-    @Args('userId', { type: () => Int }) userId: number,
+    @Args('userId', { type: () => Int }) userId: string,
   ) {
     return this.followService.getFollowers(userId);
   }

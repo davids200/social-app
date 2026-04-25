@@ -33,7 +33,7 @@ async createUser(username: string, email: string, password: string) {
 
   // 3. Send ONLY safe data to queue (NO password)
   await this.userQueue.addUserCreatedJob({
-    id: saved.id,
+    id: String(saved.id),
     username: saved.username,
     email: saved.email,
   });
@@ -48,7 +48,7 @@ async createUser(username: string, email: string, password: string) {
     return this.repo.find();
   }
 
-  async findUserById(id: number) {
+  async findUserById(id: string) {
   return this.repo.findOne({ where: { id } });
 }
 

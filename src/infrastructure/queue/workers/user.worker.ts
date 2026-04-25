@@ -34,7 +34,7 @@ export class UserWorker extends WorkerHost {
         u.email = $email
     `,
     {
-      id: String(id), // ✅ FORCE STRING HERE
+      id: String(id), 
       username,
       email,
     },

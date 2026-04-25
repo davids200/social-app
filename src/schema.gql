@@ -2,8 +2,38 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
-type UserModel {
+type PostMedia {
   id: Int!
+  url: String!
+  type: String!
+}
+
+type Comment {
+  id: String!
+  content: String!
+  userId: String!
+  postId: String!
+  parentCommentId: String
+  createdAt: DateTime!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Post {
+  id: String!
+  content: String!
+  userId: String!
+  visibility: String!
+  media: [PostMedia!]
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type UserModel {
+  id: String!
   username: String!
   email: String!
 }
@@ -14,22 +44,10 @@ type AuthResponse {
 }
 
 type UserResponse {
-  id: Int!
+  id: String!
   username: String!
   email: String!
 }
-
-type Post {
-  id: Int!
-  content: String!
-  userId: Int!
-  createdAt: DateTime!
-}
-
-"""
-A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
-"""
-scalar DateTime
 
 type Like {
   id: Int!
@@ -46,7 +64,7 @@ type LikeResponse {
 }
 
 type FollowUserType {
-  id: Int!
+  id: String!
   username: String!
   email: String!
 }
@@ -54,6 +72,8 @@ type FollowUserType {
 type Query {
   users: [UserModel!]!
   getPosts: [Post!]!
+  getPostComments(postId: String!): [Comment!]!
+  getCommentTree(postId: String!): [Comment!]!
   postLikeCount(postId: Int!): Int!
   commentLikeCount(commentId: Int!): Int!
   getFollowing(userId: Int!): [FollowUserType!]!
@@ -62,13 +82,14 @@ type Query {
 
 type Mutation {
   createUser(username: String!, email: String!, password: String!): UserModel!
+  createPost(userId: String!, content: String!, visibility: String): Post!
+  createComment(postId: String!, content: String!, parentCommentId: String): Comment!
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
-  createPost(userId: Int!, content: String!): Post!
   likePost(userId: Int!, postId: Int!): LikeResponse!
   likeComment(userId: Int!, commentId: Int!): Like!
   unlikePost(userId: Int!, postId: Int!): LikeResponse!
   unlikeComment(userId: Int!, commentId: Int!): LikeResponse!
-  followUser(followerId: Int!, followingId: Int!): Boolean!
-  unfollowUser(followerId: Int!, followingId: Int!): Boolean!
+  followUser(followerId: String!, followingId: String!): Boolean!
+  unfollowUser(followerId: String!, followingId: String!): Boolean!
 }

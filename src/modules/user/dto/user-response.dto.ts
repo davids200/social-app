@@ -2,8 +2,8 @@ import { ObjectType, Field, Int } from '@nestjs/graphql';
 
 @ObjectType()
 export class UserResponse {
-  @Field(() => Int)
-  id!: number;
+  @Field(() => String)
+id!: string;
 
   @Field()
   username!: string;
@@ -11,3 +11,6 @@ export class UserResponse {
   @Field()
   email!: string;
 }
+
+
+

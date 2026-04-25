@@ -13,7 +13,7 @@ export class FollowService {
   // =========================
   // 🚀 FOLLOW USER
   // =========================
-  async followUser(followerId: number, followingId: number) {
+  async followUser(followerId: string, followingId: string) {
     await this.userQueue.addFollowJob({
       followerId: String(followerId),
       followingId: String(followingId),
@@ -25,7 +25,7 @@ export class FollowService {
   // =========================
   // 💔 UNFOLLOW USER
   // =========================
-  async unfollowUser(followerId: number, followingId: number) {
+  async unfollowUser(followerId: string, followingId: string) {
     await this.userQueue.addUnfollowJob({
       followerId: String(followerId),
       followingId: String(followingId),
@@ -49,7 +49,7 @@ export class FollowService {
   // =========================
   // 👥 GET FOLLOWING
   // =========================
- async getFollowing(userId: number) {
+ async getFollowing(userId: string) {
   const result = await this.run(
     `
     MATCH (u:User {id: $userId})-[:FOLLOWS]->(f:User)
@@ -71,7 +71,7 @@ export class FollowService {
   // =========================
   // 👥 GET FOLLOWERS
   // =========================
- async getFollowers(userId: number) {
+ async getFollowers(userId: string) {
   const result = await this.run(
     `
     MATCH (f:User)-[:FOLLOWS]->(u:User {id: $userId})

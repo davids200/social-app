@@ -1,9 +1,9 @@
-import { ObjectType, Field, Int } from '@nestjs/graphql';
+import { ObjectType, Field } from '@nestjs/graphql';
 
 @ObjectType()
 export class FollowUserType {
-  @Field(() => Int)
-  id!: number;
+  @Field(() => String)
+  id!: string; // UUID comes from DB entity
 
   @Field()
   username!: string;
