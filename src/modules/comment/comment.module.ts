@@ -10,7 +10,7 @@ import { Post } from '../post/post.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Comment, User, Post]),
-    QueueModule, // 🔥 ONLY THIS HANDLES BULL QUEUE
+    QueueModule, 
   ],
   providers: [
     CommentService,

@@ -1,17 +1,14 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
 @Entity()
+@Index(['userId', 'postId'], { unique: true })
+@Index(['userId', 'commentId'], { unique: true })
 export class Like {
   @PrimaryGeneratedColumn('uuid')
-  id!: string;
+  id: string;
 
   @Column()
-  userId!: string;
+  userId: string;
 
   @Column({ nullable: true })
   postId?: string;
@@ -19,6 +16,6 @@ export class Like {
   @Column({ nullable: true })
   commentId?: string;
 
-  @CreateDateColumn()
-  createdAt!: Date;
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
 }

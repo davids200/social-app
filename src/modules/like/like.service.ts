@@ -1,8 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { Like } from './like.entity';
-import { LikeQueueService } from './../../infrastructure/queue/like.queue.service';
+import { LikeQueueService } from 'src/infrastructure/queue/like.queue.service';
 
 @Injectable()
 export class LikeService {
@@ -12,11 +13,18 @@ export class LikeService {
     private readonly likeQueue: LikeQueueService,
   ) {}
 
+  private isValidUUID(id: string): boolean {
+    return /^[0-9a-f-]{36}$/i.test(id);
+  }
+
   // =========================
   // ❤️ LIKE / UNLIKE POST
   // =========================
-  async likePost(userId: string, postId: string) {
-    if (!postId) throw new BadRequestException('PostId required');
+  async likePost(userId: string, postId: string): Promise<boolean> {
+    if (!postId) throw new BadRequestException('postId required');
+    if (!this.isValidUUID(postId)) {
+      throw new BadRequestException('Invalid postId');
+    }
 
     const existing = await this.likeRepo.findOne({
       where: { userId, postId },
@@ -25,40 +33,37 @@ export class LikeService {
     let liked: boolean;
 
     if (existing) {
-      await this.likeRepo.delete(existing.id);
-      liked = false;
-    } else {
-      await this.likeRepo.save({
-        userId,
-        postId,
-      });
-      liked = true;
-    }
+  await this.likeRepo.delete(existing.id);
+  liked = false;
 
-    // =========================
-    // 🚀 QUEUE FOR NEO4J SYNC
-    // =========================
-    await this.likeQueue.addLikeJob({
-      userId,
-      postId,
-    });
+  // 💔 UNLIKE
+  await this.likeQueue.addPostUnlikeJob({
+    userId,
+    postId,
+  });
 
-    // =========================
-    // 🔔 NOTIFICATION EVENT
-    // =========================
-    await this.likeQueue.addPostLikedNotification({
-      userId,
-      postId,
-    });
+} else {
+  await this.likeRepo.save({ userId, postId });
+  liked = true;
 
-    return { liked };
+  // ❤️ LIKE
+  await this.likeQueue.addPostLikeJob({
+    userId,
+    postId,
+  });
+}
+
+    return liked;
   }
 
   // =========================
   // 💬 LIKE / UNLIKE COMMENT
   // =========================
-  async likeComment(userId: string, commentId: string) {
-    if (!commentId) throw new BadRequestException('CommentId required');
+  async likeComment(userId: string, commentId: string): Promise<boolean> {
+    if (!commentId) throw new BadRequestException('commentId required');
+    if (!this.isValidUUID(commentId)) {
+      throw new BadRequestException('Invalid commentId');
+    }
 
     const existing = await this.likeRepo.findOne({
       where: { userId, commentId },
@@ -66,35 +71,29 @@ export class LikeService {
 
     let liked: boolean;
 
-    if (existing) {
-      await this.likeRepo.delete(existing.id);
-      liked = false;
-    } else {
-      await this.likeRepo.save({
-        userId,
-        commentId,
-      });
-      liked = true;
-    }
-
-    // =========================
-    // 🚀 QUEUE FOR NEO4J SYNC
-    // =========================
-    await this.likeQueue.addLikeJob({
-      userId,
-      commentId,
-    });
-
-
+   
     
-    // =========================
-    // 🔔 NOTIFICATION EVENT
-    // =========================
-    await this.likeQueue.addCommentLikedNotification({
-      userId,
-      commentId,
-    });
+    if (existing) {
+  await this.likeRepo.delete(existing.id);
+  liked = false;
 
-    return { liked };
+  // 💔 UNLIKE
+  await this.likeQueue.addCommentUnlikeJob({
+    userId,
+    commentId,
+  });
+
+} else {
+  await this.likeRepo.save({ userId, commentId });
+  liked = true;
+
+  // ❤️ LIKE
+  await this.likeQueue.addCommentLikeJob({
+    userId,
+    commentId,
+  });
+}
+
+    return liked;
   }
 }
