@@ -1,123 +1,171 @@
-SOCIAL APP PROJECT STATUS EXPORT
-Date: 2026-04-23
+SOCIAL APP BACKEND STATUS EXPORT (25/04/2026)
 
-========================
-1. OVERALL ARCHITECTURE
-========================
-Backend: NestJS (GraphQL + TypeScript)
+------------------------------------------------------------
+1. CORE ARCHITECTURE
+------------------------------------------------------------
+Backend: NestJS (GraphQL)
+API Style: GraphQL (Apollo)
+
 Databases:
-- PostgreSQL (primary source of truth)
-- Neo4j (graph database for relationships, feed, recommendations)
+- PostgreSQL → Primary database (source of truth)
+- Neo4j → Social graph (relationships, likes, follows, feed logic)
 
-Async / Messaging:
-- Redis (BullMQ queue system)
+Queue System:
+- Redis + BullMQ
+- Used for async processing (Neo4j sync, notifications)
 
-Real-time:
-- WebSocket (Notification Gateway)
+------------------------------------------------------------
+2. AUTH SYSTEM
+------------------------------------------------------------
+- JWT Authentication enabled
+- User extracted from JWT only (NOT from client input)
 
-========================
-2. CORE MODULES
-========================
+Example:
+ctx.req.user.userId
 
-User Module:
-- User creation (PostgreSQL)
-- Queue-based sync to Neo4j (user.created event)
-- Prevents duplicate users via service-level control
+Security rule:
+- Client cannot send userId directly for sensitive actions
 
-Post Module:
-- Post creation stored in PostgreSQL
-- Redis queue emits post.created event
-- Worker creates Post node in Neo4j
-- Builds relationships (CREATED, SEES feed edges)
+------------------------------------------------------------
+3. POSTS MODULE
+------------------------------------------------------------
+Features:
+- Create post (JWT user only)
+- Get all posts
 
-Follow System:
-- Follow/unfollow via GraphQL mutations
-- Stored in Neo4j as FOLLOWS relationships
-- Prevented duplicate relationships using MERGE (NOT CREATE)
+Flow:
+Client → GraphQL → PostgreSQL → Queue → Neo4j
 
-Notification System:
-- Triggered via queue events:
-  - post.created
-  - post.liked
-  - user.followed
-- Stored in DB + sent via WebSocket gateway
+Neo4j structure:
+(User)-[:POSTED]->(Post)
 
-========================
-3. QUEUE SYSTEM (BULLMQ)
-========================
+------------------------------------------------------------
+4. LIKE SYSTEM
+------------------------------------------------------------
+Supported:
+- Post likes
+- Comment likes
 
-Queues:
-- post-queue
-- user-queue
+PostgreSQL:
+- Stores like/unlike state (toggle system)
 
-Workers:
-- PostWorker:
-  - handles post.created, post.liked
-  - syncs Neo4j
-  - triggers notifications
+Neo4j relationships:
+- (User)-[:LIKES]->(Post)
+- (User)-[:LIKES]->(Comment)
 
-- UserWorker:
-  - handles user.created
-  - syncs Neo4j user nodes
+Behavior:
+- LIKE → MERGE relationship
+- UNLIKE → DELETE relationship
 
-Configuration:
-- BullModule.forRoot configured with Redis connection
-- BullModule.registerQueue used for queue definitions
-- @InjectQueue used in services
+------------------------------------------------------------
+5. FOLLOW SYSTEM
+------------------------------------------------------------
+PostgreSQL:
+- Stores follow relationships
 
-========================
-4. GRAPH DATABASE (NEO4J)
-========================
-
-Nodes:
-- User
-- Post
-
-Relationships:
-- (User)-[:CREATED]->(Post)
+Neo4j:
 - (User)-[:FOLLOWS]->(User)
-- (User)-[:SEES]->(Post)
 
-Key Rule:
-- MERGE used instead of CREATE to prevent duplicates
+Features:
+- Follow / Unfollow toggle
+- JWT-based followerId
+- Validation of following user existence
 
-========================
-5. CURRENT FIXES COMPLETED
-========================
+------------------------------------------------------------
+6. COMMENT SYSTEM
+------------------------------------------------------------
+Features:
+- Comments linked to posts
+- Reply support
 
-- Fixed BullMQ connection error (Worker requires a connection)
-- Fixed missing queue registration (registerQueue added)
-- Fixed dependency injection issues (QueueModule imports)
-- Fixed worker initialization issues
-- Fixed duplicate service injection issues
-- Fixed Neo4j sync pipeline via workers
+Neo4j:
+- (User)-[:COMMENTED]->(Comment)
+- (Comment)-[:REPLY_TO]->(Comment)
 
-========================
-6. CURRENT STATUS (STABLE FLOW)
+------------------------------------------------------------
+7. QUEUE SYSTEM (BULLMQ)
+------------------------------------------------------------
+Each module has:
+- queue.service.ts
+- worker.ts
 
-✔ Postgres working
-✔ Redis queue working
-✔ Workers running
-✔ Neo4j syncing correctly
-✔ Follow relationships working
-✔ Notifications pipeline active
+Events:
+- post.created
+- post.liked
+- post.unliked
+- comment.liked
+- comment.unliked
+- user.followed
+- user.unfollowed
 
-========================
-7. ARCHITECTURE FLOW
+Purpose:
+- Sync PostgreSQL → Neo4j
+- Notifications
+- Async processing
 
-User/Post Action →
-PostgreSQL Save →
-Redis Queue Event →
-Worker Processing →
-Neo4j Sync →
-Notification + WebSocket Update
+------------------------------------------------------------
+8. NEO4J ROLE
+------------------------------------------------------------
+Used for:
+- Social graph relationships
+- Feed generation (future)
+- Recommendations
+- Engagement tracking
 
-========================
-8. KNOWN IMPROVEMENTS NEXT
+------------------------------------------------------------
+9. FIXED ISSUES
+------------------------------------------------------------
+- Fixed NestJS dependency injection errors
+- Fixed Neo4jService module export/import issues
+- Fixed follow/like toggle logic
+- Fixed missing UNLIKE logic in Neo4j
+- Standardized JWT user extraction
+- Fixed queue injection issues
 
-- Feed ranking algorithm (Neo4j traversal optimization)
-- Prevent duplicate follow relationships at API level
-- Batch notifications (performance improvement)
-- WebSocket room-based delivery per user
-- Comment system (nested graph structure)
-- Like system with polymorphic graph design
+------------------------------------------------------------
+10. CURRENT LIMITATIONS
+------------------------------------------------------------
+- Feed algorithm not implemented
+- Notifications system partial
+- Redis caching not implemented
+- Neo4j queries still basic
+- No ranking/AI feed yet
+
+------------------------------------------------------------
+11. SYSTEM FLOW
+------------------------------------------------------------
+Client (React Native)
+        ↓
+GraphQL API (NestJS)
+        ↓
+PostgreSQL (source of truth)
+        ↓
+BullMQ Queue (Redis)
+        ↓
+Workers (Post / Like / Follow)
+        ↓
+Neo4j Graph Database
+
+------------------------------------------------------------
+12. SYSTEM STATUS
+------------------------------------------------------------
+Auth: OK
+Posts: OK
+Likes: OK (toggle fixed)
+Follows: OK
+Comments: PARTIAL
+Neo4j Sync: OK
+Queue System: OK
+Feed System: NOT BUILT
+
+------------------------------------------------------------
+13. NEXT PRIORITY FEATURES
+------------------------------------------------------------
+1. Feed Algorithm (TikTok-style ranking)
+2. Notification System
+3. Redis caching layer
+4. Neo4j optimization for scaling
+5. Search system (Elasticsearch)
+
+------------------------------------------------------------
+END OF EXPORT
