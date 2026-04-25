@@ -49,20 +49,6 @@ type UserResponse {
   email: String!
 }
 
-type Like {
-  id: Int!
-  userId: Int!
-  postId: Int
-  commentId: Int
-}
-
-type LikeResponse {
-  postId: Int
-  commentId: Int
-  likeCount: Int!
-  likedByMe: Boolean!
-}
-
 type FollowUserType {
   id: String!
   username: String!
@@ -74,10 +60,8 @@ type Query {
   getPosts: [Post!]!
   getPostComments(postId: String!): [Comment!]!
   getCommentTree(postId: String!): [Comment!]!
-  postLikeCount(postId: Int!): Int!
-  commentLikeCount(commentId: Int!): Int!
-  getFollowing(userId: Int!): [FollowUserType!]!
-  getFollowers(userId: Int!): [FollowUserType!]!
+  getFollowing(userId: String!): [FollowUserType!]!
+  getFollowers(userId: String!): [FollowUserType!]!
 }
 
 type Mutation {
@@ -86,10 +70,8 @@ type Mutation {
   createComment(postId: String!, content: String!, parentCommentId: String): Comment!
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
-  likePost(userId: Int!, postId: Int!): LikeResponse!
-  likeComment(userId: Int!, commentId: Int!): Like!
-  unlikePost(userId: Int!, postId: Int!): LikeResponse!
-  unlikeComment(userId: Int!, commentId: Int!): LikeResponse!
-  followUser(followerId: String!, followingId: String!): Boolean!
-  unfollowUser(followerId: String!, followingId: String!): Boolean!
+  likePost(postId: String!): Boolean!
+  likeComment(commentId: String!): Boolean!
+  followUser(followingId: String!): Boolean!
+  unfollowUser(followingId: String!): Boolean!
 }

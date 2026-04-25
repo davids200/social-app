@@ -20,6 +20,9 @@ export class Notification {
   @Column({ default: false })
   isRead!: boolean;
 
+  @Column({ nullable: true })
+commentId?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

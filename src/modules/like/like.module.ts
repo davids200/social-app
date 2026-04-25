@@ -1,15 +1,18 @@
 import { Module } from '@nestjs/common';
-import { LikeService } from './like.service';
-import { LikeResolver } from './like.resolver';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Like } from './like.entity';
-  
+import { LikeService } from './like.service';
+import { LikeResolver } from './like.resolver';
+
+// 👇 ADD THIS IMPORT (IMPORTANT)
+import { QueueModule } from '../../infrastructure/queue/queue.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Like]), // 🔥 THIS FIXES YOUR ERROR 
+    TypeOrmModule.forFeature([Like]),
+    QueueModule, 
   ],
   providers: [LikeService, LikeResolver],
-  exports: [LikeService, LikeResolver]
 })
 export class LikeModule {}
+

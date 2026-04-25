@@ -3,21 +3,20 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 
-@Entity()
-export class Like {
+@Entity('follow')
+@Index(['followerId', 'followingId'], { unique: true })
+export class Follow {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
   @Column()
-  userId!: string;
+  followerId!: string;
 
-  @Column({ nullable: true })
-  postId?: string;
-
-  @Column({ nullable: true })
-  commentId?: string;
+  @Column()
+  followingId!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

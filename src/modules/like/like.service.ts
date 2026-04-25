@@ -1,111 +1,100 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from './like.entity';
+import { LikeQueueService } from './../../infrastructure/queue/like.queue.service';
 
 @Injectable()
 export class LikeService {
   constructor(
     @InjectRepository(Like)
-    private repo: Repository<Like>,
+    private readonly likeRepo: Repository<Like>,
+    private readonly likeQueue: LikeQueueService,
   ) {}
 
-  // 👍 LIKE POST
- async likePost(userId: number, postId: number) {
-  const exists = await this.repo.findOne({ where: { userId, postId } });
+  // =========================
+  // ❤️ LIKE / UNLIKE POST
+  // =========================
+  async likePost(userId: string, postId: string) {
+    if (!postId) throw new BadRequestException('PostId required');
 
-  if (!exists) {
-    const like = this.repo.create({ userId, postId });
-    await this.repo.save(like);
+    const existing = await this.likeRepo.findOne({
+      where: { userId, postId },
+    });
+
+    let liked: boolean;
+
+    if (existing) {
+      await this.likeRepo.delete(existing.id);
+      liked = false;
+    } else {
+      await this.likeRepo.save({
+        userId,
+        postId,
+      });
+      liked = true;
+    }
+
+    // =========================
+    // 🚀 QUEUE FOR NEO4J SYNC
+    // =========================
+    await this.likeQueue.addLikeJob({
+      userId,
+      postId,
+    });
+
+    // =========================
+    // 🔔 NOTIFICATION EVENT
+    // =========================
+    await this.likeQueue.addPostLikedNotification({
+      userId,
+      postId,
+    });
+
+    return { liked };
   }
 
-  const likeCount = await this.repo.count({ where: { postId } });
+  // =========================
+  // 💬 LIKE / UNLIKE COMMENT
+  // =========================
+  async likeComment(userId: string, commentId: string) {
+    if (!commentId) throw new BadRequestException('CommentId required');
 
-  return {
-    postId,
-    likeCount,
-    likedByMe: true,
-  };
-}
+    const existing = await this.likeRepo.findOne({
+      where: { userId, commentId },
+    });
 
+    let liked: boolean;
 
+    if (existing) {
+      await this.likeRepo.delete(existing.id);
+      liked = false;
+    } else {
+      await this.likeRepo.save({
+        userId,
+        commentId,
+      });
+      liked = true;
+    }
 
-
-  // 👍 LIKE COMMENT
- async likeComment(userId: number, commentId: number) {
-  const exists = await this.repo.findOne({ where: { userId, commentId } });
-
-  if (!exists) {
-    const like = this.repo.create({ userId, commentId });
-    await this.repo.save(like);
-  }
-
-  const likeCount = await this.repo.count({ where: { commentId } });
-
-  return {
-    commentId,
-    likeCount,
-    likedByMe: true,
-  };
-}
-
-  // ❌ UNLIKE POST
- async unlikePost(userId: number, postId: number) {
-  const existing = await this.repo.findOne({
-    where: { userId, postId },
-  });
-
-  // ✅ Idempotent behavior
-  if (existing) {
-    await this.repo.remove(existing);
-  }
-
-  const likeCount = await this.repo.count({
-    where: { postId },
-  });
-
-  return {
-    postId,
-    likeCount,
-    likedByMe: false,
-  };
-}
+    // =========================
+    // 🚀 QUEUE FOR NEO4J SYNC
+    // =========================
+    await this.likeQueue.addLikeJob({
+      userId,
+      commentId,
+    });
 
 
+    
+    // =========================
+    // 🔔 NOTIFICATION EVENT
+    // =========================
+    await this.likeQueue.addCommentLikedNotification({
+      userId,
+      commentId,
+    });
 
-
-
-  // ❌ UNLIKE COMMENT
-  async unlikeComment(userId: number, commentId: number) {
-  const existing = await this.repo.findOne({
-    where: { userId, commentId },
-  });
-
-  if (existing) {
-    await this.repo.remove(existing);
-  }
-
-  const likeCount = await this.repo.count({
-    where: { commentId },
-  });
-
-  return {
-    commentId,
-    likeCount,
-    likedByMe: false,
-  };
-}
-
-
-
-
-
-  // 📊 COUNT
-  countPostLikes(postId: number) {
-    return this.repo.count({ where: { postId } });
-  }
-
-  countCommentLikes(commentId: number) {
-    return this.repo.count({ where: { commentId } });
+    return { liked };
   }
 }
