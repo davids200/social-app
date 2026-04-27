@@ -2,75 +2,53 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 
-import { Comment } from './comment.entity';
-import { CommentQueueService } from 'src/infrastructure/queue/comment.queue.service';
+import { Comment } from './comment.entity'; 
 import { User } from '../user/user.entity';
 import { Post } from '../post/post.entity';
+import { RedisService } from 'src/infrastructure/redis/redis.service';
+import { FeedProducer } from '../feed/producers/feed.producer';
 
 @Injectable()
 export class CommentService {
   constructor(
     @InjectRepository(Comment)
     private readonly commentRepo: Repository<Comment>,
-
+private readonly redis: RedisService,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-
+private readonly feedProducer: FeedProducer,
     @InjectRepository(Post)
-    private readonly postRepo: Repository<Post>,
-
-    private readonly commentQueue: CommentQueueService,
+    private readonly postRepo: Repository<Post>, 
   ) {}
 
   // =========================
   // 💬 CREATE COMMENT / REPLY
   // =========================
-  async createComment(
-    userId: string,
-    postId: string,
-    content: string,
-    parentCommentId?: string,
-  ): Promise<Comment> {
+  async createComment(userId: string, postId: string, text: string,parentCommentId?: string) {
+  // 1. Save in DB
+  const comment = await this.commentRepo.save({
+    userId,
+    postId,
+    text,
+    parentCommentId: parentCommentId || null,
+  });
 
-    const text = content?.trim();
+  // 2. Fast counter update
+  await this.redis.incrementComment(postId);
 
-    if (!text) {
-      throw new BadRequestException('Comment cannot be empty');
-    }
+  // 3. Kafka event
+  await this.feedProducer.emitCommentEvent({
+    userId,
+    postId,
+    commentId: comment.id,
+  });
 
-    // 🔒 CHECK USER (FIXED)
-    const user = await this.userRepo.findOneBy({ id: userId });
-    if (!user) {
-      throw new BadRequestException('User does not exist');
-    }
+  return comment;
+}
 
-    // 🔒 CHECK POST (FIXED)
-    const post = await this.postRepo.findOneBy({ id: postId });
-    if (!post) {
-      throw new BadRequestException('Post does not exist');
-    }
 
-    const comment = this.commentRepo.create({
-      content: text,
-      userId,
-      postId,
-      parentCommentId: parentCommentId ?? null,
-    });
 
-    const saved = await this.commentRepo.save(comment);
 
-    // 🔥 Queue for Neo4j
-    await this.commentQueue.addCommentCreatedJob({
-      commentId: saved.id,
-      userId,
-      postId,
-      parentCommentId: parentCommentId ?? null,
-      content: saved.content,
-      createdAt: saved.createdAt.toISOString(),
-    });
-
-    return saved;
-  }
 
   // =========================
   // 📄 GET COMMENTS (FLAT)

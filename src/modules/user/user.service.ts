@@ -1,16 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './user.entity';
-import { UserQueueService } from '../../infrastructure/queue/user.queue.service';
+import { User } from './user.entity'; 
  import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private repo: Repository<User>,
-    private userQueue: UserQueueService, 
+    private repo: Repository<User>, 
   ) {}
 
 
@@ -31,12 +29,7 @@ async createUser(username: string, email: string, password: string) {
 
   console.log('🟢 User saved in Postgres:', saved.id);
 
-  // 3. Send ONLY safe data to queue (NO password)
-  await this.userQueue.addUserCreatedJob({
-    id: String(saved.id),
-    username: saved.username,
-    email: saved.email,
-  });
+  
 
   console.log('📨 User sent to Redis queue');
 

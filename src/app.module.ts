@@ -9,16 +9,16 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PostModule } from './modules/post/post.module';
 import { LikeModule } from './modules/like/like.module';
 import { FollowModule } from './modules/follow/follow.module';
-import { Neo4jModule } from './infrastructure/database/neo4j/neo4j.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { BullModule } from '@nestjs/bullmq';
 
 
-// ✅ Infrastructure worker (IMPORTANT: must be in providers, NOT imports)
-import { PostWorker } from './infrastructure/queue/workers/post.worker';
-import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module';
-import { QueueModule } from './infrastructure/queue/queue.module';
+// ✅ Infrastructure worker (IMPORTANT: must be in providers, NOT imports) 
+import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module'; 
 import { NotificationGateway } from './modules/notification/notification.gateway';
+import { FeedModule } from './modules/feed/feed.module';
+import { ScyllaModule } from './infrastructure/database/scylladb/scylla.module';
+
 
 
 @Module({
@@ -53,16 +53,15 @@ import { NotificationGateway } from './modules/notification/notification.gateway
     PostModule,
     LikeModule,
     FollowModule,
-    Neo4jModule,
+    FeedModule, 
     NotificationModule,
     NotificationGateway,
      EventEmitterModule.forRoot(),
-     QueueModule
+     ScyllaModule,
   ],
 
   // ✅ THIS IS THE CRITICAL FIX
-  providers: [
-    PostWorker,
+  providers: [ 
   ],
   
 })

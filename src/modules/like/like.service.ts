@@ -1,99 +1,68 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { RedisService } from 'src/infrastructure/redis/redis.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
 import { Like } from './like.entity';
-import { LikeQueueService } from 'src/infrastructure/queue/like.queue.service';
+import { FeedProducer } from 'src/modules/feed/producers/feed.producer';
 
 @Injectable()
 export class LikeService {
   constructor(
+    private readonly redis: RedisService,
+
     @InjectRepository(Like)
     private readonly likeRepo: Repository<Like>,
-    private readonly likeQueue: LikeQueueService,
+
+    private readonly feedProducer: FeedProducer,
   ) {}
 
-  private isValidUUID(id: string): boolean {
-    return /^[0-9a-f-]{36}$/i.test(id);
+  // =========================
+  // ❤️ LIKE POST
+  // =========================
+  async likePost(userId: string, postId: string) {
+    // 1. Redis fast write
+    const exists = await this.redis.hasLiked(postId, userId);
+
+    if (exists) {
+      return { message: 'Already liked' };
+    }
+
+    const count = await this.redis.addLike(postId, userId);
+
+    // 2. Persist in Postgres
+    await this.likeRepo.save({ userId, postId });
+
+    // 3. Kafka event (feed update)
+    await this.feedProducer.emitLikeEvent({
+      userId,
+      postId,
+      createdAt: new Date(),
+    });
+
+    return { likeCount: count };
   }
 
   // =========================
-  // ❤️ LIKE / UNLIKE POST
+  // 💔 UNLIKE POST
   // =========================
-  async likePost(userId: string, postId: string): Promise<boolean> {
-    if (!postId) throw new BadRequestException('postId required');
-    if (!this.isValidUUID(postId)) {
-      throw new BadRequestException('Invalid postId');
-    }
+  async unlikePost(userId: string, postId: string) {
+    const count = await this.redis.removeLike(postId, userId);
 
-    const existing = await this.likeRepo.findOne({
-      where: { userId, postId },
+    await this.likeRepo.delete({ userId, postId });
+
+    await this.feedProducer.emitUnlikeEvent({
+      userId,
+      postId,
+      createdAt: new Date(),
     });
 
-    let liked: boolean;
-
-    if (existing) {
-  await this.likeRepo.delete(existing.id);
-  liked = false;
-
-  // 💔 UNLIKE
-  await this.likeQueue.addPostUnlikeJob({
-    userId,
-    postId,
-  });
-
-} else {
-  await this.likeRepo.save({ userId, postId });
-  liked = true;
-
-  // ❤️ LIKE
-  await this.likeQueue.addPostLikeJob({
-    userId,
-    postId,
-  });
-}
-
-    return liked;
+    return { likeCount: count };
   }
 
   // =========================
-  // 💬 LIKE / UNLIKE COMMENT
+  // 📊 GET LIKE COUNT
   // =========================
-  async likeComment(userId: string, commentId: string): Promise<boolean> {
-    if (!commentId) throw new BadRequestException('commentId required');
-    if (!this.isValidUUID(commentId)) {
-      throw new BadRequestException('Invalid commentId');
-    }
-
-    const existing = await this.likeRepo.findOne({
-      where: { userId, commentId },
-    });
-
-    let liked: boolean;
-
-   
-    
-    if (existing) {
-  await this.likeRepo.delete(existing.id);
-  liked = false;
-
-  // 💔 UNLIKE
-  await this.likeQueue.addCommentUnlikeJob({
-    userId,
-    commentId,
-  });
-
-} else {
-  await this.likeRepo.save({ userId, commentId });
-  liked = true;
-
-  // ❤️ LIKE
-  await this.likeQueue.addCommentLikeJob({
-    userId,
-    commentId,
-  });
-}
-
-    return liked;
+  async getLikeCount(postId: string) {
+    return this.redis.getLikeCount(postId);
   }
 }

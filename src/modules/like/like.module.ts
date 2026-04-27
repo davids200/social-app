@@ -3,27 +3,25 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 
 import { Like } from './like.entity';
+
 import { LikeService } from './like.service';
-import { LikeResolver } from './like.resolver';
-import { LikeQueueService } from 'src/infrastructure/queue/like.queue.service';
-import { LikeWorker } from 'src/infrastructure/queue/workers/like.worker';
-import { Neo4jModule } from 'src/infrastructure/database/neo4j/neo4j.module';
+import { LikeResolver } from './like.resolver'; 
+import { RedisModule } from 'src/infrastructure/redis/redis.module';
+import { FeedModule } from '../feed/feed.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Like]),
-
-     
     BullModule.registerQueue({
       name: 'like-queue',
+      
     }),
-    Neo4jModule,
+    RedisModule,
+      FeedModule
   ],
   providers: [
     LikeService,
-    LikeResolver,
-    LikeQueueService,
-    LikeWorker,  
+    LikeResolver, 
   ],
 })
 export class LikeModule {}

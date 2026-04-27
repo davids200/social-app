@@ -18,8 +18,13 @@ import { Comment } from '../comment/comment.entity';
 
 export enum PostVisibility {
   PUBLIC = 'PUBLIC',
+  COUNTRY = 'COUNTRY',
+  DISTRICT = 'DISTRICT',
+  SUBCOUNTY = 'SUBCOUNTY',
+  PARISH = 'PARISH',
+  VILLAGE = 'VILLAGE',
   FOLLOWERS = 'FOLLOWERS',
-  PRIVATE = 'PRIVATE', 
+  PRIVATE = 'PRIVATE',
 }
 
 @ObjectType()
@@ -29,17 +34,13 @@ export class Post {
 @PrimaryGeneratedColumn('uuid')
 id!: string;
 
-  // @Field()
-  // @Column({ unique: true })
-  // uuid!: string;
-
   @Field()
   @Column('text')
   content!: string;
 
-@Field(() => String)
-@Column()
-userId!: string;
+  @Field(() => Int)
+  @Column()
+  userId!: string;
 
   // 👤 OWNER RELATION
   @ManyToOne(() => User, (user) => user.posts, {
@@ -81,9 +82,4 @@ updatedAt!: Date;
 
 
 
-  // // ⚡ AUTO UUID
-  // @BeforeInsert()
-  // generateUuid() {
-  //   this.uuid = uuidv4();
-  // }
 }

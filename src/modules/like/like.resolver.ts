@@ -1,4 +1,4 @@
-import { Resolver, Mutation, Args, Context } from '@nestjs/graphql';
+import { Resolver, Mutation, Args, Context, Query } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 
 import { LikeService } from './like.service';
@@ -8,25 +8,24 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class LikeResolver {
   constructor(private readonly likeService: LikeService) {}
 
-  // ❤️ POST
-  @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
-  async likePost(
+  likePost(
     @Args('postId') postId: string,
-    @Context() ctx: any,
-  ): Promise<boolean> {
-    const userId = ctx.req.user.id;
-    return this.likeService.likePost(userId, postId);
+    @Context() ctx,
+  ) {
+    return this.likeService.likePost(ctx.req.user.userId, postId);
   }
 
-  // 💬 COMMENT
-  @UseGuards(JwtAuthGuard)
   @Mutation(() => Boolean)
-  async likeComment(
-    @Args('commentId') commentId: string,
-    @Context() ctx: any,
-  ): Promise<boolean> {
-    const userId = ctx.req.user.id;
-    return this.likeService.likeComment(userId, commentId);
+  unlikePost(
+    @Args('postId') postId: string,
+    @Context() ctx,
+  ) {
+    return this.likeService.unlikePost(ctx.req.user.userId, postId);
+  }
+
+  @Query(() => Number)
+  likeCount(@Args('postId') postId: string) {
+    return this.likeService.getLikeCount(postId);
   }
 }

@@ -1,174 +1,94 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-
-import { Follow } from './follow.entity';
-import { User } from '../user/user.entity';
-import { FollowQueueService } from 'src/infrastructure/queue/follow.queue.service';
-import { Neo4jService } from 'src/infrastructure/database/neo4j/neo4j.service';
+import { Injectable } from '@nestjs/common';
+import { Client } from 'cassandra-driver';
+import { FeedProducer } from 'src/modules/feed/producers/feed.producer';
 
 @Injectable()
 export class FollowService {
+  private client: Client;
+
   constructor(
-    @InjectRepository(Follow)
-    private readonly followRepo: Repository<Follow>,
-
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-
-    private readonly followQueue: FollowQueueService,
-    private readonly neo4j: Neo4jService,
-  ) {}
-
-  // =========================
-  // 🔐 UUID CHECK
-  // =========================
-  private isValidUUID(id: string): boolean {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+    private readonly feedProducer: FeedProducer,
+  ) {
+    this.client = new Client({
+      contactPoints: ['127.0.0.1:9042'],
+      localDataCenter: 'datacenter1',
+      keyspace: 'social_app',
+    });
   }
 
   // =========================
-  // 👤 FOLLOW / UNFOLLOW
+  // 👥 FOLLOW USER
   // =========================
-  async followUser(followerId: string, followingId: string): Promise<boolean> {
-    if (!followerId) {
-      throw new BadRequestException('Unauthorized user');
-    }
+  async follow(userId: string, targetUserId: string) {
+    const now = new Date();
 
-    if (!followingId) {
-      throw new BadRequestException('followingId is required');
-    }
+    // 1️⃣ Store FOLLOW relationship (ScyllaDB)
+    await this.client.execute(
+      `
+      INSERT INTO user_followers (user_id, follower_id, followed_at)
+      VALUES (?, ?, ?)
+      `,
+      [targetUserId, userId, now],
+      { prepare: true },
+    );
 
-    if (!this.isValidUUID(followingId)) {
-      throw new BadRequestException('Invalid Input!');
-    }
+    // reverse lookup
+    await this.client.execute(
+      `
+      INSERT INTO user_following (user_id, following_id, followed_at)
+      VALUES (?, ?, ?)
+      `,
+      [userId, targetUserId, now],
+      { prepare: true },
+    );
 
-    if (followerId === followingId) {
-      throw new BadRequestException('You cannot follow yourself');
-    }
-
-    // =========================
-    // 👤 CHECK USER EXISTS
-    // =========================
-    const user = await this.userRepo.findOne({
-      where: { id: followingId },
+    // 2️⃣ Emit Kafka event (IMPORTANT FOR FEED SYSTEM)
+    await this.feedProducer.emitFollowEvent({
+      followerId: userId,
+      followingId: targetUserId,
+      createdAt: now,
     });
 
-    if (!user) {
-      throw new BadRequestException('Following user does not exist');
-    }
-
-    // =========================
-    // 🔄 CHECK FOLLOW STATE
-    // =========================
-    const existing = await this.followRepo.findOne({
-      where: { followerId, followingId },
-    });
-
-    let isFollowing: boolean;
-
-    if (existing) {
-      await this.followRepo.delete(existing.id);
-      isFollowing = false;
-
-      // 🚀 UNFOLLOW EVENT
-      await this.followQueue.addUnfollowJob({
-        followerId,
-        followingId,
-      });
-    } else {
-      await this.followRepo.save({
-        followerId,
-        followingId,
-      });
-      isFollowing = true;
-
-      // 🚀 FOLLOW EVENT
-      await this.followQueue.addFollowJob({
-        followerId,
-        followingId,
-      });
-    }
-
-    return isFollowing;
+    return {
+      success: true,
+      message: 'Followed successfully',
+    };
   }
 
   // =========================
-  // ❌ EXPLICIT UNFOLLOW
+  // ❌ UNFOLLOW USER
   // =========================
-  async unfollowUser(followerId: string, followingId: string): Promise<boolean> {
-    if (!this.isValidUUID(followingId)) {
-      throw new BadRequestException('Invalid followingId');
-    }
+  async unfollow(userId: string, targetUserId: string) {
+    // remove follower relation
+    await this.client.execute(
+      `
+      DELETE FROM user_followers 
+      WHERE user_id = ? AND follower_id = ?
+      `,
+      [targetUserId, userId],
+      { prepare: true },
+    );
 
-    const existing = await this.followRepo.findOne({
-      where: { followerId, followingId },
+    // remove reverse relation
+    await this.client.execute(
+      `
+      DELETE FROM user_following 
+      WHERE user_id = ? AND following_id = ?
+      `,
+      [userId, targetUserId],
+      { prepare: true },
+    );
+
+    // optional Kafka event
+    await this.feedProducer.emitUnfollowEvent({
+      followerId: userId,
+      followingId: targetUserId,
+      createdAt: new Date(),
     });
 
-    if (!existing) return false;
-
-    await this.followRepo.delete(existing.id);
-
-    await this.followQueue.addUnfollowJob({
-      followerId,
-      followingId,
-    });
-
-    return true;
-  }
-
-  // =========================
-  // 👥 FOLLOWING (NEO4J)
-  // =========================
-  async getFollowing(userId: string) {
-    const session = this.neo4j.getSession();
-
-    try {
-      const result = await session.run(
-        `
-        MATCH (u:User {id: $userId})-[:FOLLOWS]->(f:User)
-        RETURN f
-        `,
-        { userId },
-      );
-
-      return result.records.map((r) => r.get('f').properties);
-    } finally {
-      await session.close();
-    }
-  }
-
-  // =========================
-  // 👥 FOLLOWERS (NEO4J)
-  // =========================
-  async getFollowers(userId: string) {
-    const session = this.neo4j.getSession();
-
-    try {
-      const result = await session.run(
-        `
-        MATCH (f:User)-[:FOLLOWS]->(u:User {id: $userId})
-        RETURN f
-        `,
-        { userId },
-      );
-
-      return result.records.map((r) => r.get('f').properties);
-    } finally {
-      await session.close();
-    }
-  }
-
-  // =========================
-  // ✅ USER EXISTS
-  // =========================
-  async userExists(userId: string): Promise<boolean> {
-    if (!this.isValidUUID(userId)) return false;
-
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-    });
-
-    return !!user;
+    return {
+      success: true,
+      message: 'Unfollowed successfully',
+    };
   }
 }

@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:15
     container_name: social_postgres
@@ -10,23 +9,78 @@ services:
       POSTGRES_DB: social_app
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - social_network
 
   redis:
     image: redis:7
     container_name: social_redis
     ports:
       - "6379:6379"
+    networks:
+      - social_network
 
-  neo4j:
-    image: neo4j:5
-    container_name: social_neo4j
+  # ✅ Use Apache Kafka (official image) instead of Bitnami
+  kafka:
+    image: apache/kafka:3.7.0  # ✅ Official Apache Kafka image
+    container_name: social_kafka
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "9092:9092"
     environment:
-      NEO4J_AUTH: neo4j/password
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+    networks:
+      - social_network
+
+  # ✅ Use working ScyllaDB version (5.4.0 - not affected by systemctl issue)
+  scylladb:
+    image: scylladb/scylla:5.4.0  # ✅ Version without the systemctl bug
+    container_name: social_scylladb
+    restart: always
+    ports:
+      - "9042:9042"
     volumes:
-      - neo4j_data:/data
+      - scylla_data:/var/lib/scylla
+    command: --smp 1 --memory 1G --overprovisioned 1 --developer-mode 1
+    networks:
+      - social_network
+
+  # ✅ Keep Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: social_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - social_network
+
+  # ✅ Fixed MinIO (was using wrong image)
+  minio:
+    image: minio/minio:latest
+    container_name: social_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - social_network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -36,7 +90,14 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
+    networks:
+      - social_network
 
 volumes:
   postgres_data:
-  neo4j_data:
+  scylla_data:
+  minio_data:
+
+networks:
+  social_network:
+    driver: bridge

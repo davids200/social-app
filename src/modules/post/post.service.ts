@@ -1,20 +1,28 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Client } from 'cassandra-driver';
 
 import { Post, PostVisibility } from './post.entity';
-import { PostQueueService } from 'src/infrastructure/queue/post.queue.service';
-import { Neo4jService } from 'src/infrastructure/database/neo4j/neo4j.service';
+import { FeedProducer } from '../feed/producers/feed.producer';
 
 @Injectable()
 export class PostService {
+  private scylla: Client;
+
   constructor(
     @InjectRepository(Post)
     private readonly postRepo: Repository<Post>,
 
-    private readonly postQueue: PostQueueService,
-    private readonly neo4j: Neo4jService,
-  ) {}
+    private readonly feedProducer: FeedProducer,
+  ) {
+    // 🔥 ScyllaDB connection (same as FollowService)
+    this.scylla = new Client({
+      contactPoints: ['127.0.0.1:9042'],
+      localDataCenter: 'datacenter1',
+      keyspace: 'social_app',
+    });
+  }
 
   // =========================
   // 📝 CREATE POST
@@ -28,19 +36,31 @@ export class PostService {
       throw new BadRequestException('Post content is required');
     }
 
-    // 1️⃣ Save in PostgreSQL
+    // 1️⃣ Save in PostgreSQL (SOURCE OF TRUTH)
     const post = await this.postRepo.save({
       userId,
       content,
       visibility: visibility || PostVisibility.PUBLIC,
     });
 
-    // 2️⃣ Send to queue for Neo4j sync
-    await this.postQueue.addPostJob({
+    const now = new Date();
+
+    // 2️⃣ Save in ScyllaDB (for feed system)
+    await this.scylla.execute(
+      `
+      INSERT INTO posts_by_user (user_id, post_id, content, created_at)
+      VALUES (?, ?, ?, ?)
+      `,
+      [userId, post.id, content, now],
+      { prepare: true },
+    );
+
+    // 3️⃣ Emit Kafka event (FEED ENGINE TRIGGER)
+    await this.feedProducer.emitPostCreated({
       postId: post.id,
-      userId,
+      authorId: userId,
       content,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
     });
 
     return post;
@@ -53,30 +73,5 @@ export class PostService {
     return this.postRepo.find({
       order: { createdAt: 'DESC' },
     });
-  }
-
-  // =========================
-  // 🧠 OPTIONAL: DIRECT NEO4J READ
-  // =========================
-  async getPostGraph(postId: string) {
-    const session = this.neo4j.getSession();
-
-    try {
-      const result = await session.run(
-        `
-        MATCH (p:Post {id: $postId})
-        OPTIONAL MATCH (u:User)-[:LIKED_POST]->(p)
-        RETURN p, collect(u.id) AS likes
-        `,
-        { postId },
-      );
-
-      return result.records.map((r) => ({
-        post: r.get('p').properties,
-        likes: r.get('likes'),
-      }));
-    } finally {
-      await session.close();
-    }
   }
 }

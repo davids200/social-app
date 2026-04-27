@@ -25,7 +25,7 @@ scalar DateTime
 type Post {
   id: String!
   content: String!
-  userId: String!
+  userId: Int!
   visibility: String!
   media: [PostMedia!]
   createdAt: DateTime!
@@ -49,19 +49,12 @@ type UserResponse {
   email: String!
 }
 
-type FollowUserType {
-  id: String!
-  username: String!
-  email: String!
-}
-
 type Query {
   users: [UserModel!]!
   getPosts: [Post!]!
   getPostComments(postId: String!): [Comment!]!
   getCommentTree(postId: String!): [Comment!]!
-  getFollowing(userId: String!): [FollowUserType!]!
-  getFollowers(userId: String!): [FollowUserType!]!
+  likeCount(postId: String!): Float!
 }
 
 type Mutation {
@@ -71,7 +64,11 @@ type Mutation {
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
   likePost(postId: String!): Boolean!
-  likeComment(commentId: String!): Boolean!
-  followUser(followingId: String!): Boolean!
-  unfollowUser(followingId: String!): Boolean!
+  unlikePost(postId: String!): Boolean!
+  follow(input: FollowDto!): Boolean!
+  unfollow(input: FollowDto!): Boolean!
+}
+
+input FollowDto {
+  targetUserId: String!
 }
