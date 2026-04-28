@@ -36,6 +36,33 @@ export class PostService {
       throw new BadRequestException('Post content is required');
     }
 
+
+ 
+
+// 🔥 LOCATION ENFORCEMENT (ADD ONLY THIS BLOCK)
+const geoBased =
+  visibility &&
+  ![
+    PostVisibility.PUBLIC,
+    PostVisibility.PRIVATE,
+    PostVisibility.FOLLOWERS,
+  ].includes(visibility);
+
+if (geoBased) {
+  // You MUST fetch user location (minimal check)
+  // If you already store it elsewhere, inject UserRepository later
+
+  throw new BadRequestException(
+    'Geo-based posts require user location (not yet enabled in service)',
+  );
+}
+
+
+
+
+
+
+
     // 1️⃣ Save in PostgreSQL (SOURCE OF TRUTH)
     const post = await this.postRepo.save({
       userId,

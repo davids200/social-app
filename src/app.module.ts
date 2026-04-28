@@ -17,7 +17,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { EventEmitterModule } from '@nestjs/event-emitter/dist/event-emitter.module'; 
 import { NotificationGateway } from './modules/notification/notification.gateway';
 import { FeedModule } from './modules/feed/feed.module';
-import { ScyllaModule } from './infrastructure/database/scylladb/scylla.module';
+import { ScyllaModule } from './infrastructure/scylla/scylla.module';
 
 
 

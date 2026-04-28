@@ -13,6 +13,6 @@ export class FeedResolver {
   async getFeed(@Context() ctx: any) {
     const userId = ctx.req.user.id;
 
-    return this.feedService.getVisiblePosts(userId);
+    return this.feedService.getFeed(userId);
   }
 }

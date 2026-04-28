@@ -26,6 +26,11 @@ export class User {
   @Column()
   password!: string;
 
+@Column({ nullable: true })
+locationId?: string; 
+
+
+
   // 🔥 RELATION: USER → POSTS
   @OneToMany(() => Post, (post) => post.user)
   posts!: Post[];

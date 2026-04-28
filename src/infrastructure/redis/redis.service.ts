@@ -12,6 +12,55 @@ export class RedisService {
     });
   }
 
+
+
+ // =========================
+  // 🔍 GET CACHE
+  // =========================
+  async getCache<T>(key: string): Promise<T | null> {
+    const data = await this.client.get(key);
+    return data ? JSON.parse(data) : null;
+  }
+
+  // =========================
+  // 💾 SET CACHE
+  // =========================
+  async setCache(
+    key: string,
+    value: any,
+    ttlSeconds = 3600,
+  ): Promise<void> {
+    await this.client.set(
+      key,
+      JSON.stringify(value),
+      'EX',
+      ttlSeconds,
+    );
+  }
+
+  // =========================
+  // ❌ DELETE CACHE
+  // =========================
+  async deleteCache(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
+  // =========================
+  // 🧹 CLEAR PATTERN
+  // =========================
+  async deleteByPattern(pattern: string): Promise<void> {
+    const keys = await this.client.keys(pattern);
+    if (keys.length) {
+      await this.client.del(keys);
+    }
+  }
+
+
+
+
+
+
+
   // =========================
   // ❤️ LIKE SET
   // =========================

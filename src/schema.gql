@@ -25,17 +25,37 @@ scalar DateTime
 type Post {
   id: String!
   content: String!
-  userId: Int!
-  visibility: String!
+  userId: String!
+  locationId: String
+  visibility: PostVisibility!
+  visibilityLevel: Int
   media: [PostMedia!]
   createdAt: DateTime!
   updatedAt: DateTime!
+}
+
+enum PostVisibility {
+  PUBLIC
+  COUNTRY
+  DISTRICT
+  SUBCOUNTY
+  PARISH
+  VILLAGE
+  FOLLOWERS
+  PRIVATE
 }
 
 type UserModel {
   id: String!
   username: String!
   email: String!
+}
+
+type Location {
+  id: String!
+  name: String!
+  level: Float!
+  parentId: String
 }
 
 type AuthResponse {
@@ -52,6 +72,9 @@ type UserResponse {
 type Query {
   users: [UserModel!]!
   getPosts: [Post!]!
+  getFeed: [Post!]!
+  getLocations(parentId: String): [Location!]!
+  getLocationChain(locationId: String!): [Location!]!
   getPostComments(postId: String!): [Comment!]!
   getCommentTree(postId: String!): [Comment!]!
   likeCount(postId: String!): Float!
@@ -60,6 +83,7 @@ type Query {
 type Mutation {
   createUser(username: String!, email: String!, password: String!): UserModel!
   createPost(content: String!, visibility: String): Post!
+  createLocation(input: CreateLocationInput!): Location!
   createComment(postId: String!, content: String!, parentCommentId: String): Comment!
   register(username: String!, email: String!, password: String!): UserResponse!
   login(email: String!, password: String!): AuthResponse!
@@ -67,6 +91,12 @@ type Mutation {
   unlikePost(postId: String!): Boolean!
   follow(input: FollowDto!): Boolean!
   unfollow(input: FollowDto!): Boolean!
+}
+
+input CreateLocationInput {
+  name: String!
+  level: Int!
+  parentId: String
 }
 
 input FollowDto {

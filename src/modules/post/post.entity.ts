@@ -6,16 +6,19 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
-  BeforeInsert,
+  UpdateDateColumn,
 } from 'typeorm';
 
-import { ObjectType, Field, Int } from '@nestjs/graphql';
-import { v4 as uuidv4 } from 'uuid';
+import { ObjectType, Field, Int, registerEnumType } from '@nestjs/graphql';
 
 import { PostMedia } from './post-media.entity';
 import { User } from '../user/user.entity';
 import { Comment } from '../comment/comment.entity';
 
+
+// =========================
+// 🔐 VISIBILITY ENUM
+// =========================
 export enum PostVisibility {
   PUBLIC = 'PUBLIC',
   COUNTRY = 'COUNTRY',
@@ -27,31 +30,57 @@ export enum PostVisibility {
   PRIVATE = 'PRIVATE',
 }
 
-@ObjectType()
-@Entity()
-export class Post {
- @Field(() => String)
-@PrimaryGeneratedColumn('uuid')
-id!: string;
+// Register for GraphQL
+registerEnumType(PostVisibility, {
+  name: 'PostVisibility',
+});
 
+
+// =========================
+// 📝 POST ENTITY
+// =========================
+@ObjectType()
+@Entity('post')
+export class Post {
+  // =========================
+  // 🆔 ID
+  // =========================
+  @Field(() => String)
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
+
+  // =========================
+  // 📝 CONTENT
+  // =========================
   @Field()
   @Column('text')
   content!: string;
 
-  @Field(() => Int)
+  // =========================
+  // 👤 USER (FK)
+  // =========================
+  @Field(() => String)
   @Column()
   userId!: string;
 
-  // 👤 OWNER RELATION
+  // Relation
   @ManyToOne(() => User, (user) => user.posts, {
     onDelete: 'CASCADE',
-    nullable: false,
   })
   @JoinColumn({ name: 'userId' })
   user!: User;
 
-  // 👁 VISIBILITY
-  @Field(() => String)
+  // =========================
+  // 📍 LOCATION
+  // =========================
+  @Field(() => String, { nullable: true })
+  @Column({ nullable: true })
+  locationId?: string;
+
+  // =========================
+  // 🔐 VISIBILITY TYPE
+  // =========================
+  @Field(() => PostVisibility)
   @Column({
     type: 'enum',
     enum: PostVisibility,
@@ -59,7 +88,19 @@ id!: string;
   })
   visibility!: PostVisibility;
 
+  // =========================
+  // 🔢 VISIBILITY LEVEL (optional optimization)
+  // =========================
+  @Field(() => Int, { nullable: true })
+  @Column({
+    type: 'int',
+    nullable: true,
+  })
+  visibilityLevel?: number;
+
+  // =========================
   // 📸 MEDIA
+  // =========================
   @Field(() => [PostMedia], { nullable: true })
   @OneToMany(() => PostMedia, (media) => media.post, {
     cascade: true,
@@ -67,19 +108,20 @@ id!: string;
   })
   media?: PostMedia[];
 
+  // =========================
   // 💬 COMMENTS
+  // =========================
   @OneToMany(() => Comment, (comment) => comment.post)
   comments!: Comment[];
 
-  // 🕒 TIMESTAMP
-@Field()
-@CreateDateColumn()
-createdAt!: Date;
+  // =========================
+  // 🕒 TIMESTAMPS
+  // =========================
+  @Field()
+  @CreateDateColumn()
+  createdAt!: Date;
 
-@Field()
-@CreateDateColumn()
-updatedAt!: Date;
-
-
-
+  @Field()
+  @UpdateDateColumn()
+  updatedAt!: Date;
 }

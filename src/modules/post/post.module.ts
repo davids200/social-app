@@ -6,12 +6,14 @@ import { PostService } from './post.service';
 import { PostResolver } from './post.resolver';
 import { PostMedia } from './post-media.entity'; 
 import { FeedModule } from '../feed/feed.module';
+import { LocationModule } from '../location/location.module'; // 🔥 LOCATION MODULE
 
 @Module({
   imports: [
     TypeOrmModule.forFeature(
       [Post, PostMedia]), 
-      FeedModule
+      FeedModule,
+      LocationModule
   ],
   exports: [PostService],
   providers: [
